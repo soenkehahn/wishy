@@ -4,37 +4,53 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        icon = pkgs.fetchurl {
+        original = pkgs.fetchurl {
+          name = "image.png";
           url = "https://avatars.githubusercontent.com/u/91479705?s=200&v=4";
           sha256 = "QdqLYzJ47tmXX1PtwhE3XHnPm5l52DzyVlVobIJT8ZI=";
         };
-        generations = 400;
-      in
-      {
-        packages = rec {
-          wishy = pkgs.runCommand "wishy-output"
+        mkImage = generation:
+          pkgs.runCommand "image-${builtins.toString generation}.bmp"
             {
-              buildInputs = [ pkgs.tree pkgs.imagemagick pkgs.potrace ];
+              buildInputs = with pkgs; [ potrace imagemagick ];
+            }
+            (if generation > 0
+            then
+              ''
+                echo running generation ${builtins.toString generation}
+                potrace ${mkImage (generation - 1)} --svg --output tmp.svg
+                convert tmp.svg -resize 200x200 $out
+              ''
+            else
+              ''
+                echo converting original image to bmp
+                convert ${original} -resize 200x200 $out
+              '');
+        collectImages = generation:
+          pkgs.runCommand "collectImages-${builtins.toString generation}"
+            {
+              env = {
+                images = builtins.toString (builtins.genList mkImage generation);
+              };
             }
             ''
+              echo collecting links...
               mkdir -p $out
-              cp ${icon} icon.png
-              convert icon.{png,bmp}
-              for i in $(seq -f "%03g" 0 ${builtins.toString generations}) ; do
-                echo generation $i
-                cp icon.bmp $out/$i.bmp
-                potrace icon.bmp --svg
-                convert icon.svg -resize 200x200 icon.bmp
+              cd $out
+              i=0
+              for image in $images ; do
+                ln -s $image $(printf "%03g" $i)
+                i=$(($i + 1))
               done
-            '';
-          display = pkgs.writeShellScriptBin "display" ''
-            ${pkgs.nomacs}/bin/nomacs ${wishy}
+            ''
+        ;
+      in
+      {
+        packages.default = collectImages 300;
+        apps.default = flake-utils.lib.mkApp {
+          drv = pkgs.writeShellScriptBin "display" ''
+            ${pkgs.nomacs}/bin/nomacs ${self.packages.${system}.default}
           '';
-        };
-        apps = {
-          default = flake-utils.lib.mkApp {
-            drv = self.packages.${system}.display;
-          };
         };
       }
     );
