@@ -46,12 +46,14 @@
         ;
       in
       {
-        packages.default = collectImages 300;
-        apps.default = flake-utils.lib.mkApp {
-          drv = pkgs.writeShellScriptBin "display" ''
-            ${pkgs.nomacs}/bin/nomacs ${self.packages.${system}.default}
+        packages = {
+          images = collectImages 300;
+          default = pkgs.writeShellScriptBin "wishy" ''
+            ${pkgs.nomacs}/bin/nomacs ${self.packages.${system}.images}
           '';
         };
-      }
-    );
+        apps.default = flake-utils.lib.mkApp {
+          drv = self.packages.${system}.default;
+        };
+      });
 }
