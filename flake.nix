@@ -39,7 +39,7 @@
               cd $out
               i=0
               for image in $images ; do
-                ln -s $image $(printf "%03g" $i)
+                ln -s $image $(printf "%03g" $i).bmp
                 i=$(($i + 1))
               done
             ''
