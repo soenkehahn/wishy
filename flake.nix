@@ -47,7 +47,7 @@
       in
       {
         packages = {
-          images = collectImages 300;
+          images = collectImages 301;
           default = pkgs.writeShellScriptBin "wishy" ''
             ${pkgs.nomacs}/bin/nomacs ${self.packages.${system}.images}
           '';
